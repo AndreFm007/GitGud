@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>UniGitGud Map + Calendar + Stores</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    :root {
+      --base: #1e1e2e;
+      --mantle: #181825;
+      --crust: #11111b;
+      --text: #cdd6f4;
+      --subtext: #a6adc8;
+      --blue: #89b4fa;
+      --lavender: #b4befe;
+      --surface0: #313244;
+      --surface1: #45475a;
+      --surface2: #585b70;
+      --green: #a6e3a1;
+      --red: #f38ba8;
+      --yellow: #f9e2af;
+      --accent: var(--blue);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body, html {
+      height: 100%;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--base);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    #sidebar {
+      width: 30%;
+      height: 100vh;
+      background-color: var(--mantle);
+      float: left;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    #map {
+      width: 70%;
+      height: 100vh;
+      float: left;
+    }
+
+    .calendar-section, .stores-section {
+      margin-bottom: 2rem;
+    }
+
+    .calendar-header, .stores-header {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      color: var(--lavender);
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+
+    .calendar-day {
+      background-color: var(--surface0);
+      text-align: center;
+      padding: 0.5rem;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .calendar-day:hover {
+      background-color: var(--surface2);
+    }
+
+    input, button, select {
+      width: 100%;
+      margin-top: 8px;
+      padding: 8px;
+      background-color: var(--surface0);
+      border: 1px solid var(--surface2);
+      border-radius: 5px;
+      color: var(--text);
+    }
+
+    button {
+      background-color: var(--accent);
+      color: var(--crust);
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .event-list, .store-list {
+      margin-top: 10px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    .event-item, .store-item {
+      background-color: var(--surface1);
+      padding: 6px;
+      margin-bottom: 5px;
+      border-radius: 5px;
+    }
+
+    .menu-item {
+      font-size: 0.9rem;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="calendar-section">
+    <div class="calendar-header">Calendário</div>
+    <div class="calendar-grid" id="calendarGrid"></div>
+    <input type="text" id="eventName" placeholder="Nome do Evento">
+    <input type="text" id="eventLat" placeholder="Latitude">
+    <input type="text" id="eventLng" placeholder="Longitude">
+    <button onclick="addEvent()">Adicionar Evento</button>
+    <div class="event-list" id="eventList"></div>
+  </div>
+
+  <div class="stores-section">
+    <div class="stores-header">Lojas e Promoções</div>
+    <select id="discountFilter" onchange="filterStores()">
+      <option value="0">Mostrar Tudo</option>
+      <option value="10">10%+</option>
+      <option value="20">20%+</option>
+      <option value="30">30%+</option>
+      <option value="50">50%+</option>
+    </select>
+    <div class="store-list" id="storeList"></div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  // Initialize Map
+  const map = L.map('map').setView([41.1579, -8.6291], 13); // Porto Default
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  let eventMarkers = [];
+  let storeMarkers = [];
+
+  // Calendar Setup
+  const currentDate = new Date();
+  const calendarGrid = document.getElementById("calendarGrid");
+
+  function buildCalendar() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) {
+      const emptyDiv = document.createElement('div');
+      calendarGrid.appendChild(emptyDiv);
+    }
+
+    for (let day = 1; day <= totalDays; day++) {
+      const dayDiv = document.createElement('div');
+      dayDiv.classList.add('calendar-day');
+      dayDiv.innerText = day;
+      calendarGrid.appendChild(dayDiv);
+    }
+  }
+
+  buildCalendar();
+
+  // Events
+  const events = [];
+
+  function addEvent() {
+    const name = document.getElementById("eventName").value.trim();
+    const lat = parseFloat(document.getElementById("eventLat").value.trim());
+    const lng = parseFloat(document.getElementById("eventLng").value.trim());
+    if (name && !isNaN(lat) && !isNaN(lng)) {
+      const marker = L.marker([lat, lng]).addTo(map).bindPopup(name);
+      eventMarkers.push(marker);
+      events.push({ name, lat, lng });
+      renderEvents();
+      document.getElementById("eventName").value = '';
+      document.getElementById("eventLat").value = '';
+      document.getElementById("eventLng").value = '';
+    }
+  }
+
+  function renderEvents() {
+    const list = document.getElementById("eventList");
+    list.innerHTML = '';
+    events.forEach(ev => {
+      const item = document.createElement("div");
+      item.classList.add("event-item");
+      item.textContent = ev.name;
+      list.appendChild(item);
+    });
+  }
+
+  // Stores & Promotions
+  const stores = [
+    { name: "TechPoint", discount: 15 },
+    { name: "FashionHub", discount: 25 },
+    { name: "MegaMart", discount: 40 },
+    { name: "GreenGrocers", discount: 10 },
+    { name: "SportZone", discount: 30 },
+  ];
+
+  function displayStores(filterDiscount = 0) {
+    const list = document.getElementById("storeList");
+    list.innerHTML = '';
+    storeMarkers.forEach(m => map.removeLayer(m)); // remove previous
+    storeMarkers = [];
+
+    stores.forEach(store => {
+      if (store.discount >= filterDiscount) {
+        const storeItem = document.createElement("div");
+        storeItem.classList.add("store-item");
+        storeItem.innerHTML = `<b>${store.name}</b><div class="menu-item">${store.discount}% OFF</div>`;
+        list.appendChild(storeItem);
+
+        // Random position around Porto
+        const lat = 41.1579 + (Math.random() - 0.5) * 0.02;
+        const lng = -8.6291 + (Math.random() - 0.5) * 0.02;
+
+        const marker = L.marker([lat, lng]).addTo(map).bindPopup(`${store.name}: ${store.discount}% OFF`);
+        storeMarkers.push(marker);
+      }
+    });
+  }
+
+  function filterStores() {
+    const val = parseInt(document.getElementById("discountFilter").value);
+    displayStores(val);
+  }
+
+  displayStores();
+
+</script>
+
+</body>
+</html>
