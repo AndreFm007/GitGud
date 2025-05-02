@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>UniGitGud - Map Events & Discounts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    :root {
+      --base: #1e1e2e;
+      --mantle: #181825;
+      --crust: #11111b;
+      --text: #cdd6f4;
+      --subtext: #a6adc8;
+      --blue: #89b4fa;
+      --lavender: #b4befe;
+      --surface0: #313244;
+      --surface1: #45475a;
+      --surface2: #585b70;
+      --green: #a6e3a1;
+      --red: #f38ba8;
+      --yellow: #f9e2af;
+      --accent: var(--blue);
+    }
+
+    body, html {
+      margin: 0;
+      height: 100%;
+      background: var(--mantle);
+      font-family: 'Segoe UI', sans-serif;
+      color: var(--text);
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+      z-index: 0;
+    }
+
+    .header {
+      position: fixed;
+      top: 10px;
+      left: 20px;
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--lavender);
+      background: var(--surface1);
+      padding: 8px 15px;
+      border-radius: 10px;
+      z-index: 1100;
+      box-shadow: 0 2px 5px black;
+    }
+
+    .floating-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .floating-button {
+      background: var(--surface1);
+      color: var(--text);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      box-shadow: 0 2px 5px black;
+      width: 150px;
+      text-align: center;
+    }
+
+    .popup {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 400px;
+      background: var(--surface0);
+      padding: 20px;
+      border-radius: 10px;
+      display: none;
+      z-index: 1001;
+      box-shadow: 0 2px 10px black;
+    }
+
+    .popup.show {
+      display: block;
+    }
+
+    h2 {
+      margin-top: 0;
+      color: var(--lavender);
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 6px;
+      background: var(--surface1);
+      color: var(--text);
+    }
+
+    ul {
+      list-style: none;
+      padding-left: 0;
+      margin-top: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    ul li {
+      background: var(--surface2);
+      margin-bottom: 5px;
+      padding: 8px;
+      border-radius: 6px;
+    }
+
+    .close-btn {
+      background: var(--red);
+      color: var(--crust);
+      width: auto;
+      padding: 5px 10px;
+      font-size: 0.9rem;
+      float: right;
+      cursor: pointer;
+    }
+
+    .location-info {
+      font-size: 0.9rem;
+      color: var(--yellow);
+      margin-top: 10px;
+    }
+
+    .user-info {
+      position: fixed;
+      top: 10px;
+      right: 180px;
+      background: var(--surface1);
+      padding: 8px 15px;
+      border-radius: 10px;
+      z-index: 1100;
+      box-shadow: 0 2px 5px black;
+      font-size: 0.9rem;
+    }
+
+    .delete-btn {
+      background: var(--red);
+      color: var(--crust);
+      width: auto;
+      padding: 5px 10px;
+      font-size: 0.8rem;
+      margin-left: 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      border: none;
+    }
+
+    .upgrade-btn {
+      background: var(--green);
+      color: var(--crust);
+      width: auto;
+      padding: 5px 10px;
+      font-size: 0.8rem;
+      margin-left: 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      border: none;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<div class="header">UniGitGud</div>
+
+<div class="user-info" id="userInfo">
+  <span id="userStatus">Logged in as Student (Read Only)</span>
+  <button class="upgrade-btn" id="upgradeBtn" onclick="upgradeToHost()">Upgrade to Host</button>
+</div>
+
+<div class="floating-container">
+  <button class="floating-button" onclick="togglePopup('calendarPopup')">📅 Calendar</button>
+  <button class="floating-button" onclick="togglePopup('storePopup')">🏬 Stores</button>
+  <button class="floating-button" id="logoutBtn" style="display:none;" onclick="logout()">🔒 Logout</button>
+</div>
+
+<!-- Calendar Popup -->
+<div class="popup" id="calendarPopup">
+  <button class="close-btn" onclick="togglePopup('calendarPopup')">✖</button>
+  <h2>Calendar</h2>
+  <div id="eventForm" style="display: none;">
+    <input type="date" id="eventDate">
+    <input type="text" id="eventTitle" placeholder="Event title">
+    <div class="location-info" id="locationInfo">Click the map to select a location</div>
+    <button onclick="addEvent()">Add Event</button>
+  </div>
+  <ul id="eventList"></ul>
+</div>
+
+<!-- Store Popup -->
+<div class="popup" id="storePopup">
+  <button class="close-btn" onclick="togglePopup('storePopup')">✖</button>
+  <h2>Nearby Stores</h2>
+  <select id="discountFilter" onchange="filterStores()">
+    <option value="0">Show All</option>
+    <option value="10">10% or more</option>
+    <option value="20">20% or more</option>
+    <option value="30">30% or more</option>
+  </select>
+  <ul id="storeList"></ul>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+let map = L.map('map').setView([0, 0], 13);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+// User location
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    map.setView([lat, lon], 15);
+    L.marker([lat, lon]).addTo(map).bindPopup('You are here!').openPopup();
+    generateStores(lat, lon);
+  });
+} else {
+  alert("Geolocation not supported!");
+}
+
+function togglePopup(id) {
+  document.getElementById(id).classList.toggle('show');
+}
+
+// Authentication System
+let currentUser = { type: 'student', name: 'Student' };
+const validHosts = {
+  "admin": "admin123",
+  "event_team": "events2023",
+  "university": "campus456",
+  "john_doe": "doe789",
+  "jane_smith": "smith321"
+};
+
+function upgradeToHost() {
+  const hostName = prompt("Enter your host name:");
+  const hostKey = prompt("Enter your host key:");
+  
+  if (hostName && hostKey && validHosts[hostName] === hostKey) {
+    currentUser = { 
+      type: 'host', 
+      name: hostName,
+      key: hostKey
+    };
+    document.getElementById('userStatus').textContent = `Logged in as Host: ${hostName}`;
+    document.getElementById('eventForm').style.display = 'block';
+    document.getElementById('upgradeBtn').style.display = 'none';
+    document.getElementById('logoutBtn').style.display = 'block';
+    renderEvents();
+  } else {
+    alert("Invalid host credentials!");
+  }
+}
+
+function logout() {
+  currentUser = { type: 'student', name: 'Student' };
+  document.getElementById('userStatus').textContent = 'Logged in as Student (Read Only)';
+  document.getElementById('eventForm').style.display = 'none';
+  document.getElementById('upgradeBtn').style.display = 'block';
+  document.getElementById('logoutBtn').style.display = 'none';
+  renderEvents();
+}
+
+// Calendar Events
+let events = [];
+let selectedLocation = null;
+let tempMarker = null;
+
+map.on('click', function(e) {
+  if (currentUser && currentUser.type === 'host') {
+    selectedLocation = e.latlng;
+    document.getElementById('locationInfo').textContent = `Selected: (${selectedLocation.lat.toFixed(4)}, ${selectedLocation.lng.toFixed(4)})`;
+
+    if (tempMarker) {
+      map.removeLayer(tempMarker);
+    }
+    tempMarker = L.marker(selectedLocation, {icon: redIcon()}).addTo(map).bindPopup('Event location').openPopup();
+  }
+});
+
+function redIcon() {
+  return new L.Icon({
+    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+}
+
+function addEvent() {
+  if (currentUser && currentUser.type === 'host') {
+    const date = document.getElementById('eventDate').value;
+    const title = document.getElementById('eventTitle').value.trim();
+    if (date && title && selectedLocation) {
+      let eventMarker = L.marker([selectedLocation.lat, selectedLocation.lng], {icon: redIcon()})
+        .addTo(map)
+        .bindPopup(`<b>${title}</b><br>${date}<br>Host: ${currentUser.name}`);
+      
+      const event = {
+        date, 
+        title, 
+        marker: eventMarker,
+        hostName: currentUser.name,
+        id: Date.now()
+      };
+      
+      events.push(event);
+      renderEvents();
+      document.getElementById('eventDate').value = '';
+      document.getElementById('eventTitle').value = '';
+      selectedLocation = null;
+      document.getElementById('locationInfo').textContent = 'Click the map to select a location';
+      if (tempMarker) {
+        map.removeLayer(tempMarker);
+        tempMarker = null;
+      }
+    } else {
+      alert('Please select date, title and a location!');
+    }
+  }
+}
+
+function deleteEvent(eventId) {
+  if (currentUser && currentUser.type === 'host') {
+    const eventIndex = events.findIndex(e => e.id === eventId);
+    if (eventIndex !== -1) {
+      if (events[eventIndex].hostName === currentUser.name) {
+        map.removeLayer(events[eventIndex].marker);
+        events.splice(eventIndex, 1);
+        renderEvents();
+      } else {
+        alert('You can only delete your own events!');
+      }
+    }
+  }
+}
+
+function renderEvents() {
+  const list = document.getElementById('eventList');
+  list.innerHTML = '';
+  
+  events.forEach(ev => {
+    const li = document.createElement('li');
+    li.innerHTML = `${ev.date}: ${ev.title} (Host: ${ev.hostName})`;
+    
+    if (currentUser && currentUser.type === 'host' && currentUser.name === ev.hostName) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteEvent(ev.id);
+      };
+      li.appendChild(deleteBtn);
+    }
+    
+    list.appendChild(li);
+  });
+}
+
+// Store Management
+const exampleStores = [
+  "Tech Haven", "Gadget World", "Fashion Hub", "Home Comforts",
+  "Pet Paradise", "Book Nook", "Sporty Life", "Beauty Bliss"
+];
+
+let stores = [];
+let storeMarkers = [];
+
+function generateStores(lat, lon) {
+  for (let i = 0; i < exampleStores.length; i++) {
+    let offsetLat = lat + (Math.random() - 0.5) * 0.01;
+    let offsetLon = lon + (Math.random() - 0.5) * 0.01;
+    let discount = Math.floor(Math.random() * 41); // 0-40%
+
+    let store = {
+      name: exampleStores[i],
+      lat: offsetLat,
+      lon: offsetLon,
+      discount: discount
+    };
+
+    stores.push(store);
+
+    const marker = L.marker([offsetLat, offsetLon])
+      .addTo(map)
+      .bindPopup(`<b>${store.name}</b><br>${store.discount}% discount`);
+    
+    storeMarkers.push({marker, store});
+  }
+
+  renderStoreList();
+}
+
+function renderStoreList(minDiscount = 0) {
+  const list = document.getElementById('storeList');
+  list.innerHTML = '';
+
+  storeMarkers.forEach(({marker, store}) => {
+    if (store.discount >= minDiscount) {
+      const li = document.createElement('li');
+      li.innerHTML = `<b>${store.name}</b> - ${store.discount}% off`;
+      list.appendChild(li);
+      marker.addTo(map);
+    } else {
+      map.removeLayer(marker);
+    }
+  });
+}
+
+function filterStores() {
+  const minDiscount = parseInt(document.getElementById('discountFilter').value);
+  renderStoreList(minDiscount);
+}
+</script>
+</body>
+</html>
