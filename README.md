@@ -1,9 +1,21 @@
-Com base nas informações dadas por estabelicimentos, organizadores de eventos, google maps e até museus ou centros culturais a nossa app será um auxílio a todos os que queiram usufruir
-dos eventos mais próximos e estar conectados a todos os eventos à sua volta, ainda podendo usufruir de descontos disponíveis na app. Com isto o utilizador terá oportunidade de organizar
-as suas atividades de forma mais elevada e homogénia. 
-Será uma app freemium, uma vez que será possível desabilitar anúncios e até ter acesso a descontos melhores.
-Facilitando o acesso aos donos dos estabelicimentos ou eventos que desejem estar incluídos a nossa app terá uma versão "manager" e uma versão "user", na versão manager o cliente terá
-um menu próprio, onde poderá gerir eventos a decorrer, como atualizar horas em tempo real, ter noção das bancadas, quantidade de pessoas, até em eventos especiais poder mostrar video e audio do evento
-em  tempo real ou "loops de video", dando uma enorme liberdade ao cliente.
+A nossa ideia é fornecer informação, quando esta é mais precisa. Quando estamos na rua e procuramos uma atividade para passar o tempo, ou à procura de uma refeição na área e não queremos perder os melhores descontos.
 
-desta maneira todos os nossos clientes
+
+Com base nas informações dadas por organizadores de eventos, centros culturais, e LOJAS, utilizaremos uma base de dados que apresentará num mapa as listagens oferecidas, num raio de onde se localiza o utilizador.
+
+Para clientes: terão acesso às ofertas à medida que se forem deslocando, de modo a escolher a que melhor se adequa ao seu gosto. Poderão também criar os seus próprios eventos mais informais (ex: convívio de estudantes).
+
+Para organizadores/lojistas: conseguirão advertizar os seus serviços para uma maior clientela, realizar mais vendas de acordo com a utilização do nosso serviço,
+
+
+Ficheiros:
+Compilámos o MockUp num ficheiro html, produzido com o auxílio de Inteligência Artificial, para demonstrar a sua utilização. Atualmente este ficheiro consegue produzir um mapa com a localização atual do utilizador (de acordo com a rede de internet utilizada), consegue identificar vários estabelecimentos na redondeza, é capaz de filtrar os estabelecimentos de acordo com o desconto oferecido, o utilizador consegue criar eventos e colocá-los no mapa.
+
+
+Ambições para o projeto:
+Atualização em tempo real da localização do usuário.
+Dividir a UI em modo "user" e modo "organise".
+Guardar os eventos criados numa base de dados externa, de modo a manterem-se após o refresh da página.
+
+Considerações de Negócio:
+Na apresentação de Pré-Seleção
